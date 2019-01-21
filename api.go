@@ -120,7 +120,7 @@ func (api *Api) loginSoap(sandbox bool) error {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		//Salesforce sends 500 HTTP and SOAP body with explanation
-		faultResponse := &SalesforceSoapFaultEnvelope{}
+		faultResponse := &SalesforceLoginSoapResponse{}
 		bodyBytes, innerErr := ioutil.ReadAll(resp.Body)
 		if innerErr != nil {
 			return innerErr
@@ -138,7 +138,7 @@ func (api *Api) loginSoap(sandbox bool) error {
 		return err
 	}
 
-	successRes := &SalesforceSoapFaultEnvelope{}
+	successRes := &SalesforceLoginSoapResponse{}
 
 	err = xml.Unmarshal(bodyBytes, successRes)
 	if err != nil {
