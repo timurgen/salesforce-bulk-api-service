@@ -2,17 +2,17 @@ package main
 
 import "encoding/xml"
 
-//Salesforce Slogi nSOAP request
+//Salesforce login SOAP request
 const LOGIN_XML_PAYLOAD = `<?xml version="1.0" encoding="utf-8" ?>
 <env:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
-  <env:SalesforceLoginSoapResponseBody>
+  <env:Body>
     <n1:login xmlns:n1="urn:partner.soap.sforce.com">
       <n1:username>{username}</n1:username>
       <n1:password>{password}</n1:password>
     </n1:login>
-  </env:SalesforceLoginSoapResponseBody>
+  </env:Body>
 </env:Envelope>`
 
 //Template for login URL
@@ -51,4 +51,3 @@ type successResponseResult struct {
 	SessionId         string `xml:"sessionId"`
 	UserId            string `xml:"userId"`
 }
-

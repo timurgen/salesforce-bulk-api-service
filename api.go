@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -10,17 +12,13 @@ import (
 	"time"
 )
 
-const JOB_REQUEST_PAYLOAD = `<?xml version="1.0" encoding="UTF-8"?>
-<jobInfo xmlns="http://www.force.com/2009/06/asyncapi/dataload">
-    <operation>{operation}</operation>
-    <object>{sObject}</object>
-    <contentType>{contentType}</contentType>
-</jobInfo>`
-
+//Template for Salesforce Bulk API URL
 const SERVICE_URL = `https://{instance}.salesforce.com/services/async/{api_version}/job`
 
+//Salesforce Bulk API operation types
 type Operation string
 
+//Operations on Salesforce Bulk API
 const (
 	Insert   Operation = "insert"
 	Update   Operation = "update"
@@ -29,51 +27,57 @@ const (
 	Query    Operation = "query"
 	QueryAll Operation = "queryAll"
 )
+//Struct representing Job request
+//https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/asynch_api_quickstart_create_job.htm
+type JobRequest struct {
+	Operation   Operation `json:"operation"`
+	Object      string    `json:"object"`
+	ContentType string    `json:"contentType"`
+}
 
+//Struct representing Job response
+//https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/asynch_api_quickstart_create_job.htm
 type Job struct {
 	XMLName                 xml.Name
-	Id                      string `xml:"id"`
-	Operation               string `xml:"operation"`
-	Object                  string `xml:"object"`
-	CreatedById             string `xml:"createdById"`
-	CreatedDate             string `xml:"createdDate"`
-	State                   string `xml:"state"`
-	NumberBatchesQueued     int    `xml:"numberBatchesQueued"`
-	NumberBatchesInProgress int    `xml:"numberBatchesInProgress"`
-	NumberBatchesCompleted  int    `xml:"numberBatchesCompleted"`
-	NumberBatchesFailed     int    `xml:"numberBatchesFailed"`
-	NumberBatchesTotal      int    `xml:"numberBatchesTotal"`
-	NumberRecordsProcessed  int    `xml:"numberRecordsProcessed"`
-	NumberRetries           int    `xml:"numberRetries"`
-	ApiVersion              string `xml:"apiVersion"`
-	NumberRecordsFailed     int    `xml:"numberRecordsFailed"`
-	TotalProcessingTime     int    `xml:"totalProcessingTime"`
-	ApiActiveProcessingTime int    `xml:"apiActiveProcessingTime"`
-	ApexProcessingTimeint   int    `xml:"apexProcessingTime"`
+	Id                      string `json:"id"`
+	Operation               string `json:"operation"`
+	Object                  string `json:"object"`
+	CreatedById             string `json:"createdById"`
+	CreatedDate             string `json:"createdDate"`
+	State                   string `json:"state"`
+	NumberBatchesQueued     int    `json:"numberBatchesQueued"`
+	NumberBatchesInProgress int    `json:"numberBatchesInProgress"`
+	NumberBatchesCompleted  int    `json:"numberBatchesCompleted"`
+	NumberBatchesFailed     int    `json:"numberBatchesFailed"`
+	NumberBatchesTotal      int    `json:"numberBatchesTotal"`
+	NumberRecordsProcessed  int    `json:"numberRecordsProcessed"`
+	NumberRetries           int    `json:"numberRetries"`
+	ApiVersion              float32 `json:"apiVersion"`
+	NumberRecordsFailed     int    `json:"numberRecordsFailed"`
+	TotalProcessingTime     int    `json:"totalProcessingTime"`
+	ApiActiveProcessingTime int    `json:"apiActiveProcessingTime"`
+	ApexProcessingTimeint   int    `json:"apexProcessingTime"`
 	Batch                   []batch
 	ObjectFields            []string
 }
 
+//Struct representing root element for batch response
+//https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/asynch_api_quickstart_add_batch.htm
 type batch struct {
-	XMLName xml.Name
-	Batchinfo batchinfo `xml:"batchInfo"`
+	Id                      string `json:"id"`
+	JobId                   string `json:"jobId"`
+	State                   string `json:"state"`
+	CreatedDate             string `json:"createdDate"`
+	SystemModstamp          string `json:"systemModstamp"`
+	NumberRecordsProcessed  int    `json:"numberRecordsProcessed"`
+	NumberRecordsFailed     int    `json:"numberRecordsFailed"`
+	TotalProcessingTime     int    `json:"totalProcessingTime"`
+	ApiActiveProcessingTime int    `json:"apiActiveProcessingTime"`
+	ApexProcessingTime      int    `json:"apexProcessingTime"`
 }
 
-type batchinfo struct {
-	XMLName xml.Name
-	Id string `xml:"id"`
-	JobId string `xml:"jobId"`
-	State string `xml:"state"`
-	CreatedDate string `xml:"createdDate"`
-	SystemModstamp string `xml:"systemModstamp"`
-	NumberRecordsProcessed int `xml:"numberRecordsProcessed"`
-	NumberRecordsFailed int `xml:"numberRecordsFailed"`
-	TotalProcessingTime int `xml:"totalProcessingTime"`
-	ApiActiveProcessingTime int `xml:"apiActiveProcessingTime"`
-	ApexProcessingTime int `xml:"apexProcessingTime"`
 
-}
-
+//Salesforce API
 type Api struct {
 	apiVersion string
 	instance   string
@@ -153,19 +157,32 @@ func (api *Api) loginSoap(sandbox bool) error {
 	return nil
 }
 
+//
+// CreateJob - create new Job
+//
 func (api *Api) CreateJob(operation Operation, sObject string, contentType string) (*Job, error) {
 	var result = &Job{}
-	var reqPayload = formatString(JOB_REQUEST_PAYLOAD,
-		"{operation}", string(operation), "{sObject}", sObject, "{contentType}", contentType)
+	var jobRequestPayload = &JobRequest{}
+	var byteBuf = new(bytes.Buffer)
+
+	jobRequestPayload.Object = sObject
+	jobRequestPayload.ContentType = contentType
+	jobRequestPayload.Operation = operation
+
+	err := json.NewEncoder(byteBuf).Encode(jobRequestPayload)
+	if err != nil {
+		return result, err
+	}
+
 	var serviceUrl = formatString(SERVICE_URL, "{instance}", api.instance, "{api_version}", api.apiVersion)
 
-	req, err := http.NewRequest("POST", serviceUrl, strings.NewReader(reqPayload))
+	req, err := http.NewRequest("POST", serviceUrl, byteBuf)
 	if err != nil {
 		return result, err
 	}
 
 	req.Header.Add("X-SFDC-Session", api.sessionId)
-	req.Header.Add("Content-Type", "application/xml; charset=UTF-8")
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	resp, err := api.client.Do(req)
 
 	if err != nil {
@@ -179,18 +196,23 @@ func (api *Api) CreateJob(operation Operation, sObject string, contentType strin
 		return result, err
 	}
 
-	err = xml.Unmarshal(bodyBytes, result)
+	err = json.Unmarshal(bodyBytes, result)
 	if err != nil {
+		fmt.Println(string(bodyBytes[:]))
 		return result, err
 	}
 
 	return result, nil
 }
 
-func (api *Api) AddBatchToJob(job *Job)  error {
+//
+//AddBatchToJob - add new batch to previously created Salesforce batch job
+//
+func (api *Api) AddBatchToJob(job *Job) error {
 	var reqPayload = fmt.Sprintf("SELECT Id, Name from %s", job.Object)
 	var jobUrl = formatString(SERVICE_URL,
 		"{instance}", api.instance, "{api_version}", api.apiVersion) + "/" + job.Id + "/batch"
+	var batch = &batch{}
 
 	req, err := http.NewRequest("POST", jobUrl, strings.NewReader(reqPayload))
 	if err != nil {
@@ -201,7 +223,7 @@ func (api *Api) AddBatchToJob(job *Job)  error {
 	req.Header.Add("Content-Type", "application/json") //fixme define type dynamically
 	resp, err := api.client.Do(req)
 	if err != nil {
-		return  err
+		return err
 	}
 
 	defer resp.Body.Close()
@@ -211,4 +233,12 @@ func (api *Api) AddBatchToJob(job *Job)  error {
 		return err
 	}
 
+	err = json.Unmarshal(bodyBytes, batch)
+	if err != nil {
+		fmt.Println(string(bodyBytes[:]))
+		return  err
+	}
+	//job.Batch = append(job.Batch, batch)
+
+	return nil
 }
