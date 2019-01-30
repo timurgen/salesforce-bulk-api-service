@@ -159,10 +159,9 @@ func (api *Api) LoginSoap(sandbox bool) error {
 }
 
 //DescribeSObject returns description for Salesforce object with given name
-func (api *Api) DescribeSObject(name string) (map[string]interface{}, error) {
+func (api *Api) DescribeSObject(name string) (result map[string]interface{}, err error) {
 	var reqUrl = fmt.Sprintf("%ssobjects/%s/describe",
 		formatString(RestApiServiceUrl, "{instance}", api.instance, "{api_version}", api.apiVersion), name)
-	var response interface{}
 
 	req, err := http.NewRequest("GET", reqUrl, nil)
 	if err != nil {
@@ -187,12 +186,12 @@ func (api *Api) DescribeSObject(name string) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	err = json.Unmarshal(bodyBytes, &response)
+	err = json.Unmarshal(bodyBytes, &result)
 	if err != nil {
 		return nil, err
 	}
 
-	return response.(map[string]interface{}), nil
+	return result, nil
 }
 
 //
