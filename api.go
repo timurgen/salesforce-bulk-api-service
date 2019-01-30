@@ -27,6 +27,7 @@ const (
 	Query    Operation = "query"
 	QueryAll Operation = "queryAll"
 )
+
 //Struct representing Job request
 //https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/asynch_api_quickstart_create_job.htm
 type JobRequest struct {
@@ -39,24 +40,24 @@ type JobRequest struct {
 //https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/asynch_api_quickstart_create_job.htm
 type Job struct {
 	XMLName                 xml.Name
-	Id                      string `json:"id"`
-	Operation               string `json:"operation"`
-	Object                  string `json:"object"`
-	CreatedById             string `json:"createdById"`
-	CreatedDate             string `json:"createdDate"`
-	State                   string `json:"state"`
-	NumberBatchesQueued     int    `json:"numberBatchesQueued"`
-	NumberBatchesInProgress int    `json:"numberBatchesInProgress"`
-	NumberBatchesCompleted  int    `json:"numberBatchesCompleted"`
-	NumberBatchesFailed     int    `json:"numberBatchesFailed"`
-	NumberBatchesTotal      int    `json:"numberBatchesTotal"`
-	NumberRecordsProcessed  int    `json:"numberRecordsProcessed"`
-	NumberRetries           int    `json:"numberRetries"`
-	ApiVersion              float32 `json:"apiVersion"`
-	NumberRecordsFailed     int    `json:"numberRecordsFailed"`
-	TotalProcessingTime     int    `json:"totalProcessingTime"`
-	ApiActiveProcessingTime int    `json:"apiActiveProcessingTime"`
-	ApexProcessingTimeint   int    `json:"apexProcessingTime"`
+	Id                      string    `json:"id"`
+	Operation               Operation `json:"operation"`
+	Object                  string    `json:"object"`
+	CreatedById             string    `json:"createdById"`
+	CreatedDate             string    `json:"createdDate"`
+	State                   string    `json:"state"`
+	NumberBatchesQueued     int       `json:"numberBatchesQueued"`
+	NumberBatchesInProgress int       `json:"numberBatchesInProgress"`
+	NumberBatchesCompleted  int       `json:"numberBatchesCompleted"`
+	NumberBatchesFailed     int       `json:"numberBatchesFailed"`
+	NumberBatchesTotal      int       `json:"numberBatchesTotal"`
+	NumberRecordsProcessed  int       `json:"numberRecordsProcessed"`
+	NumberRetries           int       `json:"numberRetries"`
+	ApiVersion              float32   `json:"apiVersion"`
+	NumberRecordsFailed     int       `json:"numberRecordsFailed"`
+	TotalProcessingTime     int       `json:"totalProcessingTime"`
+	ApiActiveProcessingTime int       `json:"apiActiveProcessingTime"`
+	ApexProcessingTimeint   int       `json:"apexProcessingTime"`
 	Batch                   []batch
 	ObjectFields            []string
 }
@@ -75,7 +76,6 @@ type batch struct {
 	ApiActiveProcessingTime int    `json:"apiActiveProcessingTime"`
 	ApexProcessingTime      int    `json:"apexProcessingTime"`
 }
-
 
 //Salesforce API
 type Api struct {
@@ -198,7 +198,6 @@ func (api *Api) CreateJob(operation Operation, sObject string, contentType strin
 
 	err = json.Unmarshal(bodyBytes, result)
 	if err != nil {
-		fmt.Println(string(bodyBytes[:]))
 		return result, err
 	}
 
@@ -209,10 +208,21 @@ func (api *Api) CreateJob(operation Operation, sObject string, contentType strin
 //AddBatchToJob - add new batch to previously created Salesforce batch job
 //
 func (api *Api) AddBatchToJob(job *Job) error {
-	var reqPayload = fmt.Sprintf("SELECT Id, Name from %s", job.Object)
+	var reqPayload string
 	var jobUrl = formatString(SERVICE_URL,
 		"{instance}", api.instance, "{api_version}", api.apiVersion) + "/" + job.Id + "/batch"
 	var batch = &batch{}
+
+	switch job.Operation {
+	case Query:
+		if len(job.ObjectFields) == 0 {
+			return errors.New("batch query must have at least one field")
+		}
+		reqPayload = fmt.Sprintf("SELECT %s from %s", strings.Join(job.ObjectFields, ", "), job.Object)
+		break
+	default:
+		return errors.New("unrecognized job operation")
+	}
 
 	req, err := http.NewRequest("POST", jobUrl, strings.NewReader(reqPayload))
 	if err != nil {
@@ -236,9 +246,9 @@ func (api *Api) AddBatchToJob(job *Job) error {
 	err = json.Unmarshal(bodyBytes, batch)
 	if err != nil {
 		fmt.Println(string(bodyBytes[:]))
-		return  err
+		return err
 	}
-	//job.Batch = append(job.Batch, batch)
+	job.Batch = append(job.Batch, *batch)
 
 	return nil
 }
