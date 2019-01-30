@@ -13,7 +13,8 @@ import (
 )
 
 //Template for Salesforce Bulk API URL
-const SERVICE_URL = `https://{instance}.salesforce.com/services/async/{api_version}/job`
+const BulkServiceUrl = `https://{instance}.salesforce.com/services/async/{api_version}/job`
+const RestApiServiceUrl = `https://{instance}.salesforce.com/services/data/v{api_version}/`
 
 //Salesforce Bulk API operation types
 type Operation string
@@ -99,8 +100,8 @@ func CreateNew(username string, password string) *Api {
 	return &Api{username: username, password: password, apiVersion: "44.0", client: httpClient}
 }
 
-//loginSoap authenticates using credentials provided  in Api object
-func (api *Api) loginSoap(sandbox bool) error {
+//LoginSoap authenticates using credentials provided  in Api object
+func (api *Api) LoginSoap(sandbox bool) error {
 	var env = "test"
 	if !sandbox {
 		env = "login"
@@ -157,6 +158,43 @@ func (api *Api) loginSoap(sandbox bool) error {
 	return nil
 }
 
+//DescribeSObject returns description for Salesforce object with given name
+func (api *Api) DescribeSObject(name string) (map[string]interface{}, error) {
+	var reqUrl = fmt.Sprintf("%ssobjects/%s/describe",
+		formatString(RestApiServiceUrl, "{instance}", api.instance, "{api_version}", api.apiVersion), name)
+	var response interface{}
+
+	req, err := http.NewRequest("GET", reqUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", api.sessionId))
+
+	resp, err := api.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New(fmt.Sprintf("HTTP %d - %s", resp.StatusCode, resp.Status))
+	}
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(bodyBytes, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.(map[string]interface{}), nil
+}
+
 //
 // CreateJob - create new Job
 //
@@ -174,7 +212,7 @@ func (api *Api) CreateJob(operation Operation, sObject string, contentType strin
 		return result, err
 	}
 
-	var serviceUrl = formatString(SERVICE_URL, "{instance}", api.instance, "{api_version}", api.apiVersion)
+	var serviceUrl = formatString(BulkServiceUrl, "{instance}", api.instance, "{api_version}", api.apiVersion)
 
 	req, err := http.NewRequest("POST", serviceUrl, byteBuf)
 	if err != nil {
@@ -209,7 +247,7 @@ func (api *Api) CreateJob(operation Operation, sObject string, contentType strin
 //
 func (api *Api) AddBatchToJob(job *Job) error {
 	var reqPayload string
-	var jobUrl = formatString(SERVICE_URL,
+	var jobUrl = formatString(BulkServiceUrl,
 		"{instance}", api.instance, "{api_version}", api.apiVersion) + "/" + job.Id + "/batch"
 	var batch = &batch{}
 
