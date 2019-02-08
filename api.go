@@ -357,8 +357,69 @@ func (api *Api) CheckJobStatus(job *Job) (State, error) {
 	return Completed, nil
 }
 
-func (api *Api) GetJobResult(job *Job) {
-	//TODO
+func (api *Api) GetJobResult(job *Job) ([]interface{}, error) {
+	var resultList []interface{}
+
+	for idx := range job.Batch {
+		var resultIds []string
+		url := formatString(BulkServiceUrl,
+			"{instance}", api.instance, "{api_version}", api.apiVersion) +
+			"/" + job.Id + "/batch/" + job.Batch[idx].Id + "/result"
+
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return resultList, err
+		}
+		req.Header.Add("X-SFDC-Session", api.sessionId)
+		req.Header.Add("Accept", "application/json")
+		resp, err := api.client.Do(req)
+		if err != nil {
+			return resultList, err
+		}
+
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		if err != nil {
+			return resultList, err
+		}
+		err = json.Unmarshal(bodyBytes, &resultIds)
+		if err != nil {
+			return resultList, err
+		}
+
+		for resultIdx := range resultIds {
+			var localResultList []interface{}
+
+			resultUrl := formatString(BulkServiceUrl,
+				"{instance}", api.instance, "{api_version}", api.apiVersion) +
+				"/" + job.Id + "/batch/" + job.Batch[idx].Id + "/result/" + resultIds[resultIdx]
+			req, err := http.NewRequest("GET", resultUrl, nil)
+			if err != nil {
+				return resultList, err
+			}
+			req.Header.Add("X-SFDC-Session", api.sessionId)
+			req.Header.Add("Accept", "application/json")
+			resp, err := api.client.Do(req)
+			if err != nil {
+				return resultList, err
+			}
+
+			bodyBytes, err := ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
+			if err != nil {
+				return resultList, err
+			}
+			//fmt.Println(string(bodyBytes[:]))
+
+			err = json.Unmarshal(bodyBytes, &localResultList)
+			if err != nil {
+				return resultList, err
+			}
+			resultList = append(resultList, localResultList)
+		}
+	}
+	return resultList, nil
 }
 
 //CloseJob - close Bulk API job and free resources allocated at Salesforce instance
