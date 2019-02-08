@@ -29,6 +29,21 @@ const (
 	QueryAll Operation = "queryAll"
 )
 
+//Batch state
+type State string
+
+const (
+	Open      State = "Open"
+	Queued    State = "Queued"
+	Closed    State = "Closed"
+	Completed State = "Completed"
+	Failed    State = "Failed"
+	Error     State = "Error"
+)
+
+var KnownCompoundFields = [...]string{}
+var AllowedTypes = []string{"id", "reference"}
+
 //Struct representing Job request
 //https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/asynch_api_quickstart_create_job.htm
 type JobRequest struct {
@@ -159,6 +174,7 @@ func (api *Api) LoginSoap(sandbox bool) error {
 }
 
 //DescribeSObject returns description for Salesforce object with given name
+//
 func (api *Api) DescribeSObject(name string) (result map[string]interface{}, err error) {
 	var reqUrl = fmt.Sprintf("%ssobjects/%s/describe",
 		formatString(RestApiServiceUrl, "{instance}", api.instance, "{api_version}", api.apiVersion), name)
