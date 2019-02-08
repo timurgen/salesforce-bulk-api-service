@@ -61,7 +61,9 @@ type Job struct {
 	Object                  string    `json:"object"`
 	CreatedById             string    `json:"createdById"`
 	CreatedDate             string    `json:"createdDate"`
-	State                   string    `json:"state"`
+	State                   State     `json:"state"`
+	ConcurrencyMode         string    `json:"concurrencyMode"`
+	ContentType             string    `json:"contentType"`
 	NumberBatchesQueued     int       `json:"numberBatchesQueued"`
 	NumberBatchesInProgress int       `json:"numberBatchesInProgress"`
 	NumberBatchesCompleted  int       `json:"numberBatchesCompleted"`
@@ -83,7 +85,8 @@ type Job struct {
 type batch struct {
 	Id                      string `json:"id"`
 	JobId                   string `json:"jobId"`
-	State                   string `json:"state"`
+	State                   State  `json:"state"`
+	StateMessage            string `json:"stateMessage"`
 	CreatedDate             string `json:"createdDate"`
 	SystemModstamp          string `json:"systemModstamp"`
 	NumberRecordsProcessed  int    `json:"numberRecordsProcessed"`
