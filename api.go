@@ -416,7 +416,7 @@ func (api *Api) GetJobResult(job *Job) ([]interface{}, error) {
 			if err != nil {
 				return resultList, err
 			}
-			resultList = append(resultList, localResultList)
+			resultList = append(resultList, localResultList...)
 		}
 	}
 	return resultList, nil
@@ -450,7 +450,7 @@ func (api *Api) CloseJob(job *Job) error {
 	}
 
 	if job.State != Closed {
-		return errors.New("")
+		return errors.New(fmt.Sprintf("Something went wrong. Job state is %s", job.State))
 	}
 	return nil
 }
