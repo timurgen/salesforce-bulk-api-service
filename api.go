@@ -426,7 +426,7 @@ func (api *Api) GetJobResult(job *Job) ([]interface{}, error) {
 func (api *Api) CloseJob(job *Job) error {
 	jobUrl := formatString(BulkServiceUrl,
 		"{instance}", api.instance, "{api_version}", api.apiVersion) + "/" + job.Id
-	req, err := http.NewRequest("POST", jobUrl, strings.NewReader(`{"state": "closed"}`))
+	req, err := http.NewRequest("POST", jobUrl, strings.NewReader(`{"state": "Closed"}`))
 	if err != nil {
 		return err
 	}
