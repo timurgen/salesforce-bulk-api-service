@@ -176,6 +176,18 @@ func (api *Api) LoginSoap(sandbox bool) error {
 	return nil
 }
 
+//Add fields available for queering in Bulk API to Job object
+func (job *Job) populateObjectFields(objectFields []interface{}) {
+	for _, v := range objectFields {
+		field := v.(map[string]interface{})
+		fieldName := field["name"]
+		if true == field["createable"] || stringInArray(field["type"].(string), AllowedTypes) {
+			job.ObjectFields = append(job.ObjectFields, fieldName.(string))
+		}
+	}
+}
+
+//
 //DescribeSObject returns description for Salesforce object with given name
 //
 func (api *Api) DescribeSObject(name string) (result map[string]interface{}, err error) {
