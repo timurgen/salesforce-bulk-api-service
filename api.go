@@ -320,3 +320,76 @@ func (api *Api) AddBatchToJob(job *Job) error {
 
 	return nil
 }
+
+//CheckJobStatus check and return status of current job
+//status returned is Completed or first "non completed" batch status
+func (api *Api) CheckJobStatus(job *Job) (State, error) {
+
+	for idx := range job.Batch {
+		jobUrl := formatString(BulkServiceUrl,
+			"{instance}", api.instance, "{api_version}", api.apiVersion) + "/" + job.Id + "/batch/" + job.Batch[idx].Id
+		req, err := http.NewRequest("GET", jobUrl, nil)
+		if err != nil {
+			return Error, err
+		}
+		req.Header.Add("X-SFDC-Session", api.sessionId)
+		req.Header.Add("Accept", "application/json")
+		resp, err := api.client.Do(req)
+		if err != nil {
+			return Error, err
+		}
+
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		if err != nil {
+			return Error, err
+		}
+
+		err = json.Unmarshal(bodyBytes, &job.Batch[idx])
+		if err != nil {
+			return Error, err
+		}
+		if job.Batch[idx].State != Completed {
+			return job.Batch[idx].State, nil
+		}
+	}
+	return Completed, nil
+}
+
+func (api *Api) GetJobResult(job *Job) {
+	//TODO
+}
+
+//CloseJob - close Bulk API job and free resources allocated at Salesforce instance
+func (api *Api) CloseJob(job *Job) error {
+	jobUrl := formatString(BulkServiceUrl,
+		"{instance}", api.instance, "{api_version}", api.apiVersion) + "/" + job.Id
+	req, err := http.NewRequest("POST", jobUrl, strings.NewReader(`{"state": "closed"}`))
+	if err != nil {
+		return err
+	}
+	req.Header.Add("X-SFDC-Session", api.sessionId)
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := api.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(bodyBytes, job)
+	if err != nil {
+		return err
+	}
+
+	if job.State != Closed {
+		return errors.New("")
+	}
+	return nil
+}
