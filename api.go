@@ -277,7 +277,7 @@ func (api *Api) AddBatchToJob(job *Job) error {
 		reqPayload = fmt.Sprintf("SELECT %s from %s", strings.Join(job.ObjectFields, ", "), job.Object)
 		break
 	default:
-		return errors.New("unrecognized job operation")
+		return errors.New("unrecognized job operation. We support only query operation right now")
 	}
 
 	req, err := http.NewRequest("POST", jobUrl, strings.NewReader(reqPayload))
