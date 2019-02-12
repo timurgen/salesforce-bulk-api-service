@@ -42,7 +42,7 @@ const (
 )
 
 var KnownCompoundFields = [...]string{}
-var AllowedTypes = []string{"id", "reference"}
+var AllowedTypes = []string{"id", "reference", "datetime"}
 
 //Struct representing Job request
 //https://developer.salesforce.com/docs/atlas.en-us.api_asynch.meta/api_asynch/asynch_api_quickstart_create_job.htm
