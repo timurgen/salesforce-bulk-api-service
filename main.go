@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const DATE_LAYOUT = "2006-01-02T15:04:05.000-0700"
+
 func main() {
 	port := os.Getenv("PORT")
 
@@ -29,6 +31,20 @@ func FetchData(w http.ResponseWriter, r *http.Request) {
 	password := os.Getenv("SALESFORCE_PASSWORD") + os.Getenv("SALESFORCE_USER_TOKEN")
 	params := mux.Vars(r)
 	sObject := params["sObject"]
+
+	value := r.URL.Query()
+	since := value.Get("since")
+	var sinceTime time.Time
+
+	if since != "" {
+		t, err := time.Parse(DATE_LAYOUT, since)
+		if err != nil {
+			log.Println(err)
+		} else {
+			sinceTime = t
+		}
+	}
+
 	var useSandbox = true
 
 	if os.Getenv("SANDBOX") == "" {
@@ -63,7 +79,7 @@ func FetchData(w http.ResponseWriter, r *http.Request) {
 
 	job.populateObjectFields(objFields.([]interface{}))
 
-	err = api.AddBatchToJob(job)
+	err = api.AddBatchToJob(job, sinceTime)
 	if err != nil {
 		log.Printf("Error occurred while adding batch to job. Closing job %s", job.Id)
 		api.CloseJob(job)
@@ -106,7 +122,7 @@ func FetchData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte("["))
 	var first = true
-	for _, item := range result {
+	for idx, item := range result {
 		if first {
 			first = false
 		} else {
