@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"runtime/pprof"
 	"time"
 )
 
@@ -29,6 +30,14 @@ func main() {
 }
 
 func FetchData(w http.ResponseWriter, r *http.Request) {
+	if os.Getenv("DEBUG") != "" {
+		f, err := os.Create(fmt.Sprintf("profile-%d.prof", time.Now().Unix()))
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 	log.Printf("Serving request: %v", r)
 
 	username := os.Getenv("SALESFORCE_USERNAME")
@@ -150,6 +159,13 @@ func FetchData(w http.ResponseWriter, r *http.Request) {
 
 	if os.Getenv("DEBUG") != "" {
 		log.Println("Some memory stats...")
+		f, err := os.Create(fmt.Sprintf("profile-%d.mprof", time.Now().Unix()))
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.WriteHeapProfile(f)
+		f.Close()
+
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
 		log.Printf("Alloc = %v MiB", m.Alloc/1024/1024)
