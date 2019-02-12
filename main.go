@@ -139,6 +139,11 @@ func FetchData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Write(jsonData)
+		jsonData = nil
+		item = nil
+		if idx%10000 == 0 {
+			debug.FreeOSMemory()
+		}
 	}
 	w.Write([]byte("]"))
 	log.Println("Request completed")
