@@ -1,5 +1,5 @@
 # salesforce-bulk-api-service
-Simple service for quering Salesforce data via Bulk API
+Simple service for quering Salesforce data via Bulk API with since support
 
 ## Sesam system set up 
 ```json
