@@ -275,7 +275,7 @@ func (api *Api) CreateJob(operation Operation, sObject string, contentType strin
 //
 //AddBatchToJob - add new batch to previously created Salesforce batch job
 //
-func (api *Api) AddBatchToJob(job *Job) error {
+func (api *Api) AddBatchToJob(job *Job, since time.Time) error {
 	var reqPayload string
 	var jobUrl = formatString(BulkServiceUrl,
 		"{instance}", api.instance, "{api_version}", api.apiVersion) + "/" + job.Id + "/batch"
@@ -287,6 +287,9 @@ func (api *Api) AddBatchToJob(job *Job) error {
 			return errors.New("batch query must have at least one field")
 		}
 		reqPayload = fmt.Sprintf("SELECT %s from %s", strings.Join(job.ObjectFields, ", "), job.Object)
+		if !since.IsZero() {
+			reqPayload += fmt.Sprintf(" WHERE LastModifiedDate >= %s", since.Format("2006-01-02T15:04:05-0700"))
+		}
 		break
 	default:
 		return errors.New("unrecognized job operation. We support only query operation right now")
