@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
+	"runtime/debug"
 	"time"
 )
 
@@ -27,6 +29,8 @@ func main() {
 }
 
 func FetchData(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Serving request: %v", r)
+
 	username := os.Getenv("SALESFORCE_USERNAME")
 	password := os.Getenv("SALESFORCE_PASSWORD") + os.Getenv("SALESFORCE_USER_TOKEN")
 	params := mux.Vars(r)
@@ -102,7 +106,7 @@ func FetchData(w http.ResponseWriter, r *http.Request) {
 		}
 		time.Sleep(2 * time.Second)
 	}
-
+	log.Println("Fetching Job results")
 	result, err := api.GetJobResult(job)
 	if err != nil {
 		log.Println(err)
@@ -118,7 +122,7 @@ func FetchData(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 		return
 	}
-
+	log.Println("Sending response back to client")
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte("["))
 	var first = true
@@ -129,6 +133,7 @@ func FetchData(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(","))
 		}
 		jsonData, err := json.Marshal(item)
+
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -136,4 +141,25 @@ func FetchData(w http.ResponseWriter, r *http.Request) {
 		w.Write(jsonData)
 	}
 	w.Write([]byte("]"))
+	log.Println("Request completed")
+
+	if os.Getenv("DEBUG") != "" {
+		log.Println("Some memory stats...")
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		log.Printf("Alloc = %v MiB", m.Alloc/1024/1024)
+		log.Printf("\tTotalAlloc = %v MiB", m.TotalAlloc/1024/1024)
+		log.Printf("\tSys = %v MiB", m.Sys/1024/1024)
+		log.Printf("\tNumGC = %v\n", m.NumGC)
+
+		log.Println("Forcing GC...")
+		debug.FreeOSMemory()
+
+		runtime.ReadMemStats(&m)
+		log.Printf("Alloc = %v MiB", m.Alloc/1024/1024)
+		log.Printf("\tTotalAlloc = %v MiB", m.TotalAlloc/1024/1024)
+		log.Printf("\tSys = %v MiB", m.Sys/1024/1024)
+		log.Printf("\tNumGC = %v\n", m.NumGC)
+	}
+
 }
