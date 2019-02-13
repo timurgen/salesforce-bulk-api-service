@@ -141,7 +141,15 @@ func FetchData(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.Write([]byte(","))
 		}
-		jsonData, err := json.Marshal(item)
+		mappedItem := item.(map[string]interface{})
+		switch updDate := mappedItem["LastModifiedDate"].(type) {
+		case float64:
+			mappedItem["_updated"] = time.Unix(int64(updDate)/1000, 0).Format(DATE_LAYOUT)
+		case string:
+			mappedItem["_updated"] = updDate
+		}
+
+		jsonData, err := json.Marshal(mappedItem)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
